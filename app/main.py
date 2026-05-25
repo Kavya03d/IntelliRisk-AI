@@ -3,7 +3,8 @@
 # INTELLIRISK AI — Unified Platform Entry Point
 # Integrates Loan Approval + Insurance Fraud Detection
 # ============================================================
-
+from analytics_dashboard import render_analytics_dashboard
+from rag_chatbot import render_rag_chatbot
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -606,6 +607,19 @@ def render_sidebar():
             st.session_state.page = 'fraud'
             st.rerun()
 
+        # ── NEW BUTTONS ───────────────────────────────────────
+        if st.button("📊 Analytics Dashboard",
+                     use_container_width=True,
+                     type="secondary"):
+            st.session_state.page = 'analytics'
+            st.rerun()
+
+        if st.button("🤖 AI Chatbot (RAG)",
+                     use_container_width=True,
+                     type="secondary"):
+            st.session_state.page = 'chatbot'
+            st.rerun()
+
         st.divider()
 
         # ── Platform Stats ────────────────────────────────────
@@ -633,9 +647,11 @@ def render_sidebar():
 
         # ── Current Page Indicator ────────────────────────────
         page_names = {
-            'home' : '🏠 Home',
-            'loan' : '🏦 Loan Module',
-            'fraud': '🛡️ Fraud Module'
+            'home'      : '🏠 Home',
+            'loan'      : '🏦 Loan Module',
+            'fraud'     : '🛡️ Fraud Module',
+            'analytics' : '📊 Analytics',
+            'chatbot'   : '🤖 AI Chatbot',
         }
         current = page_names.get(
             st.session_state.page, '🏠 Home')
@@ -822,9 +838,9 @@ def render_home():
         ("📊", "Interactive Analytics",
          "Full portfolio dashboards with "
          "charts, trends, and KPIs."),
-        ("🌲", "Dual AI Detection",
-         "XGBoost + Isolation Forest working "
-         "together for fraud detection."),
+        ("🤖", "RAG AI Chatbot",
+         "Ask anything about loan policies "
+         "and fraud rules — powered by Llama 3."),
     ]
     for col, (icon, title, desc) in zip(
             [f1,f2,f3,f4], features):
@@ -890,7 +906,8 @@ def render_home():
             &nbsp;·&nbsp; Fraud Detection<br>
             Python &nbsp;·&nbsp; XGBoost &nbsp;·&nbsp;
             SHAP &nbsp;·&nbsp; SMOTE &nbsp;·&nbsp;
-            Streamlit &nbsp;·&nbsp; Plotly
+            Streamlit &nbsp;·&nbsp; Plotly &nbsp;·&nbsp;
+            LangChain &nbsp;·&nbsp; ChromaDB &nbsp;·&nbsp; Llama 3
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -901,13 +918,10 @@ def render_home():
 def render_loan():
     model, feats = load_loan_model()
 
-    # ── Back Button ───────────────────────────────────────────
-    if st.button("← Back to Home",
-                 key="loan_back"):
+    if st.button("← Back to Home", key="loan_back"):
         st.session_state.page = 'home'
         st.rerun()
 
-    # ── Title ─────────────────────────────────────────────────
     st.markdown("""
     <div style='padding:10px 0 20px 0;'>
         <div class='page-title-loan'>🏦 Loan Approval Intelligence</div>
@@ -924,7 +938,6 @@ def render_loan():
     </div>
     """, unsafe_allow_html=True)
 
-    # ── How It Works ──────────────────────────────────────────
     st.markdown("#### ⚡ How It Works")
     cols = st.columns(4)
     steps = [
@@ -953,14 +966,12 @@ def render_loan():
 
     st.divider()
 
-    # ── Tabs ──────────────────────────────────────────────────
     tab1, tab2, tab3 = st.tabs([
         "🎯 Loan Predictor",
         "📊 Analytics",
         "ℹ️ About",
     ])
 
-    # ── TAB 1: Predictor ──────────────────────────────────────
     with tab1:
         st.markdown("### 📋 Applicant Information")
         st.caption("Fill in the details below and click "
@@ -974,62 +985,40 @@ def render_loan():
                 "💰 Financial Details</div>",
                 unsafe_allow_html=True)
             income  = st.number_input(
-                "Annual Income ($)",
-                10000,1000000,75000,5000,
-                help="Total yearly income before tax")
+                "Annual Income ($)",10000,1000000,75000,5000)
             credit  = st.number_input(
-                "Loan Amount ($)",
-                10000,2000000,200000,10000,
-                help="Total loan amount requested")
+                "Loan Amount ($)",10000,2000000,200000,10000)
             annuity = st.number_input(
-                "Monthly Payment ($)",
-                1000,100000,15000,500,
-                help="Expected monthly repayment")
+                "Monthly Payment ($)",1000,100000,15000,500)
             goods   = st.number_input(
-                "Asset Value ($)",
-                5000,2000000,180000,5000,
-                help="Value of asset being purchased")
+                "Asset Value ($)",5000,2000000,180000,5000)
 
         with c2:
             st.markdown(
                 "<div class='section-header-gold'>"
                 "📈 Credit Profile</div>",
                 unsafe_allow_html=True)
-            e1 = st.slider(
-                "Credit Score — Bureau A",
-                0.0,1.0,0.5,0.01,
-                help="Higher = better credit history")
-            e2 = st.slider(
-                "Credit Score — Bureau B",
-                0.0,1.0,0.6,0.01)
-            e3 = st.slider(
-                "Credit Score — Bureau C",
-                0.0,1.0,0.55,0.01)
+            e1 = st.slider("Credit Score — Bureau A",0.0,1.0,0.5,0.01)
+            e2 = st.slider("Credit Score — Bureau B",0.0,1.0,0.6,0.01)
+            e3 = st.slider("Credit Score — Bureau C",0.0,1.0,0.55,0.01)
             st.markdown(
                 "<div class='section-header-gold'>"
                 "👤 Personal Info</div>",
                 unsafe_allow_html=True)
             age = st.slider("Age",18,70,35)
-            emp = st.slider(
-                "Years at Current Job",0.0,40.0,5.0,0.5)
+            emp = st.slider("Years at Current Job",0.0,40.0,5.0,0.5)
 
         with c3:
             st.markdown(
                 "<div class='section-header-gold'>"
                 "🏠 Assets & Risk</div>",
                 unsafe_allow_html=True)
-            car    = st.selectbox(
-                "Owns a Car?",["Yes","No"])
-            realty = st.selectbox(
-                "Owns Property?",["Yes","No"])
-            kids   = st.number_input(
-                "No. of Children",0,10,0)
-            fam    = st.number_input(
-                "Family Members",1,15,2)
-            d30    = st.number_input(
-                "Social Defaults — 30 Day",0,10,0)
-            d60    = st.number_input(
-                "Social Defaults — 60 Day",0,10,0)
+            car    = st.selectbox("Owns a Car?",["Yes","No"])
+            realty = st.selectbox("Owns Property?",["Yes","No"])
+            kids   = st.number_input("No. of Children",0,10,0)
+            fam    = st.number_input("Family Members",1,15,2)
+            d30    = st.number_input("Social Defaults — 30 Day",0,10,0)
+            d60    = st.number_input("Social Defaults — 60 Day",0,10,0)
 
         st.divider()
         _,mid,_ = st.columns([1,2,1])
@@ -1088,141 +1077,67 @@ def render_loan():
             st.divider()
             g1,g2,g3 = st.columns(3)
             with g1:
-                st.plotly_chart(
-                    gauge(res['ap'],'#10b981',
-                          'Approval Chance'),
-                    use_container_width=True)
+                st.plotly_chart(gauge(res['ap'],'#10b981','Approval Chance'),use_container_width=True)
             with g2:
-                st.plotly_chart(
-                    gauge(res['dp'],'#ef4444',
-                          'Default Risk'),
-                    use_container_width=True)
+                st.plotly_chart(gauge(res['dp'],'#ef4444','Default Risk'),use_container_width=True)
             with g3:
-                st.plotly_chart(
-                    gauge(res['dp'],res['color'],
-                          'Risk Score'),
-                    use_container_width=True)
+                st.plotly_chart(gauge(res['dp'],res['color'],'Risk Score'),use_container_width=True)
 
             st.divider()
-            with st.spinner(
-                    "🔍 Generating AI explanation..."):
+            with st.spinner("🔍 Generating AI explanation..."):
                 sd = get_shap(model,res['df'],feats)
-                st.plotly_chart(
-                    shap_chart(sd,
-                        '🔍 Why did the AI make '
-                        'this decision?'),
-                    use_container_width=True)
+                st.plotly_chart(shap_chart(sd,'🔍 Why did the AI make this decision?'),use_container_width=True)
 
             st.markdown("### 🤖 AI Decision Explanation")
             rf = sd[sd['SHAP']>0].head(3)
             pf = sd[sd['SHAP']<0].head(3)
             ec1,ec2 = st.columns(2)
             with ec1:
-                st.error(
-                    "⚠️ **Factors Working Against Approval**")
+                st.error("⚠️ **Factors Working Against Approval**")
                 for _,row in rf.iterrows():
-                    st.markdown(
-                        f"• **{row['Feature']}** = "
-                        f"`{row['Value']:.2f}` — "
-                        f"pushing risk **up** by "
-                        f"{row['SHAP']:.3f} points")
+                    st.markdown(f"• **{row['Feature']}** = `{row['Value']:.2f}` — pushing risk **up** by {row['SHAP']:.3f} points")
             with ec2:
-                st.success(
-                    "✅ **Factors Supporting Approval**")
+                st.success("✅ **Factors Supporting Approval**")
                 for _,row in pf.iterrows():
-                    st.markdown(
-                        f"• **{row['Feature']}** = "
-                        f"`{row['Value']:.2f}` — "
-                        f"pushing risk **down** by "
-                        f"{abs(row['SHAP']):.3f} points")
+                    st.markdown(f"• **{row['Feature']}** = `{row['Value']:.2f}` — pushing risk **down** by {abs(row['SHAP']):.3f} points")
 
-    # ── TAB 2: Analytics ──────────────────────────────────────
     with tab2:
         st.markdown("### 📊 Portfolio Analytics")
         try:
             df = load_loan_data()
             k1,k2,k3,k4 = st.columns(4)
             k1.metric("Total Records",f"{len(df):,}")
-            k2.metric("Approved",
-                f"{(df['TARGET']==0).sum():,}",
-                f"{(df['TARGET']==0).mean()*100:.1f}%")
-            k3.metric("Defaulted",
-                f"{(df['TARGET']==1).sum():,}",
-                f"-{(df['TARGET']==1).mean()*100:.1f}%")
-            k4.metric("Avg Loan",
-                f"${df['AMT_CREDIT'].mean():,.0f}")
+            k2.metric("Approved",f"{(df['TARGET']==0).sum():,}",f"{(df['TARGET']==0).mean()*100:.1f}%")
+            k3.metric("Defaulted",f"{(df['TARGET']==1).sum():,}",f"-{(df['TARGET']==1).mean()*100:.1f}%")
+            k4.metric("Avg Loan",f"${df['AMT_CREDIT'].mean():,.0f}")
 
             st.divider()
             a1,a2 = st.columns(2)
             with a1:
-                df['Age Group'] = pd.cut(
-                    df['AGE_YEARS'],
-                    bins=[18,25,35,45,55,100],
-                    labels=['18-25','26-35',
-                            '36-45','46-55','55+'])
-                ag = df.groupby(
-                    'Age Group',observed=True
-                )['TARGET'].mean().reset_index()
-                f1 = px.bar(ag,x='Age Group',y='TARGET',
-                    title='Default Rate by Age Group',
-                    color='TARGET',
-                    color_continuous_scale=[
-                        [0,'#052e16'],
-                        [0.5,'#f59e0b'],
-                        [1,'#ef4444']],
-                    labels={'TARGET':'Default Rate'})
-                f1.update_layout(
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    font_color='#cbd5e1')
-                st.plotly_chart(
-                    f1,use_container_width=True)
+                df['Age Group'] = pd.cut(df['AGE_YEARS'],bins=[18,25,35,45,55,100],labels=['18-25','26-35','36-45','46-55','55+'])
+                ag = df.groupby('Age Group',observed=True)['TARGET'].mean().reset_index()
+                f1 = px.bar(ag,x='Age Group',y='TARGET',title='Default Rate by Age Group',color='TARGET',color_continuous_scale=[[0,'#052e16'],[0.5,'#f59e0b'],[1,'#ef4444']],labels={'TARGET':'Default Rate'})
+                f1.update_layout(paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#cbd5e1')
+                st.plotly_chart(f1,use_container_width=True)
             with a2:
-                f2 = px.histogram(df,x='AMT_CREDIT',
-                    color='TARGET',nbins=50,
-                    title='Loan Amount Distribution',
-                    color_discrete_map={
-                        0:'#10b981',1:'#ef4444'},
-                    labels={
-                        'TARGET':'0=Repaid/1=Default'})
-                f2.update_layout(
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    font_color='#cbd5e1')
-                st.plotly_chart(
-                    f2,use_container_width=True)
+                f2 = px.histogram(df,x='AMT_CREDIT',color='TARGET',nbins=50,title='Loan Amount Distribution',color_discrete_map={0:'#10b981',1:'#ef4444'},labels={'TARGET':'0=Repaid/1=Default'})
+                f2.update_layout(paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#cbd5e1')
+                st.plotly_chart(f2,use_container_width=True)
 
-            samp = df.sample(
-                min(3000,len(df)),random_state=42)
-            f3 = px.scatter(samp,
-                x='AMT_INCOME_TOTAL',y='AMT_CREDIT',
-                color=samp['TARGET'].map(
-                    {0:'Repaid ✅',1:'Defaulted ❌'}),
-                title='Income vs Loan — '
-                      'Who Repays vs Defaults?',
-                color_discrete_map={
-                    'Repaid ✅':'#10b981',
-                    'Defaulted ❌':'#ef4444'},
-                opacity=0.45)
-            f3.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font_color='#cbd5e1')
+            samp = df.sample(min(3000,len(df)),random_state=42)
+            f3 = px.scatter(samp,x='AMT_INCOME_TOTAL',y='AMT_CREDIT',color=samp['TARGET'].map({0:'Repaid ✅',1:'Defaulted ❌'}),title='Income vs Loan — Who Repays vs Defaults?',color_discrete_map={'Repaid ✅':'#10b981','Defaulted ❌':'#ef4444'},opacity=0.45)
+            f3.update_layout(paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#cbd5e1')
             st.plotly_chart(f3,use_container_width=True)
         except Exception as e:
             st.warning(f"Analytics error: {e}")
 
-    # ── TAB 3: About ──────────────────────────────────────────
     with tab3:
         st.markdown("### ℹ️ About Loan Module")
         ab1,ab2 = st.columns([3,2])
         with ab1:
             st.markdown("""
             #### What is the Loan Approval Module?
-            Predicts loan approval decisions using
-            real-world data from 307,511 Home Credit
-            borrowers — the same approach used by
-            JPMorgan, Capital One, and modern fintechs.
+            Predicts loan approval decisions using real-world data from 307,511 Home Credit borrowers.
 
             #### Key Features
             - ✅ Real-time decisions in milliseconds
@@ -1232,31 +1147,12 @@ def render_loan():
             - ✅ Portfolio analytics dashboard
 
             #### Dataset
-            **307,511 real loan applications** from
-            Home Credit International — used in an
-            official Kaggle competition with a
-            **$70,000 prize pool**.
+            **307,511 real loan applications** from Home Credit International.
             """)
         with ab2:
-            pm = pd.DataFrame({
-                'Model':['XGBoost ⭐',
-                         'Random Forest',
-                         'Logistic Regression'],
-                'AUC'  :[0.7656,0.7506,0.6406]})
-            fp = px.bar(pm,x='AUC',y='Model',
-                orientation='h',
-                title='Model Comparison',
-                color='AUC',
-                color_continuous_scale=[
-                    [0,'#1e3a5f'],
-                    [0.5,'#f59e0b'],
-                    [1,'#f0c040']],
-                range_x=[0.5,0.85])
-            fp.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font_color='#cbd5e1',height=240,
-                margin=dict(l=10,r=20,t=40,b=10))
+            pm = pd.DataFrame({'Model':['XGBoost ⭐','Random Forest','Logistic Regression'],'AUC':[0.7656,0.7506,0.6406]})
+            fp = px.bar(pm,x='AUC',y='Model',orientation='h',title='Model Comparison',color='AUC',color_continuous_scale=[[0,'#1e3a5f'],[0.5,'#f59e0b'],[1,'#f0c040']],range_x=[0.5,0.85])
+            fp.update_layout(paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#cbd5e1',height=240,margin=dict(l=10,r=20,t=40,b=10))
             st.plotly_chart(fp,use_container_width=True)
 
 # ════════════════════════════════════════════════════════════
@@ -1265,21 +1161,14 @@ def render_loan():
 def render_fraud():
     model, feats, iso = load_fraud_models()
 
-    # ── Back Button ───────────────────────────────────────────
-    if st.button("← Back to Home",
-                 key="fraud_back"):
+    if st.button("← Back to Home", key="fraud_back"):
         st.session_state.page = 'home'
         st.rerun()
 
-    # ── Title ─────────────────────────────────────────────────
     st.markdown("""
     <div style='padding:10px 0 20px 0;'>
-        <div class='page-title-fraud'>
-            🛡️ Insurance Fraud Detection
-        </div>
-        <div class='page-sub'>
-            AI-Powered Insurance Fraud Detection Platform
-        </div>
+        <div class='page-title-fraud'>🛡️ Insurance Fraud Detection</div>
+        <div class='page-sub'>AI-Powered Insurance Fraud Detection Platform</div>
         <div class='badge-row'>
             <span class='badge-red'>⚡ XGBoost</span>
             <span class='badge-red'>🔍 SHAP</span>
@@ -1291,28 +1180,18 @@ def render_fraud():
     </div>
     """, unsafe_allow_html=True)
 
-    # ── How It Works ──────────────────────────────────────────
     st.markdown("#### ⚡ How It Works")
     cols = st.columns(4)
     steps = [
-        ("1","Enter Claim",
-         "Fill in the insurance claim details "
-         "and vehicle information"),
-        ("2","Dual AI",
-         "XGBoost + Isolation Forest both "
-         "analyse the claim independently"),
-        ("3","Fraud Scoring",
-         "Calculates fraud probability "
-         "and anomaly score in real time"),
-        ("4","Explanation",
-         "SHAP shows exactly which factors "
-         "triggered the fraud flag"),
+        ("1","Enter Claim","Fill in the insurance claim details and vehicle information"),
+        ("2","Dual AI","XGBoost + Isolation Forest both analyse the claim independently"),
+        ("3","Fraud Scoring","Calculates fraud probability and anomaly score in real time"),
+        ("4","Explanation","SHAP shows exactly which factors triggered the fraud flag"),
     ]
     for col,(n,t,d) in zip(cols,steps):
         with col:
             st.markdown(f"""
-            <div class='step-card'
-                 style='border:1px solid #2a1515;'>
+            <div class='step-card' style='border:1px solid #2a1515;'>
                 <div class='step-number-red'>{n}</div>
                 <div class='step-title'>{t}</div>
                 <div class='step-desc'>{d}</div>
@@ -1320,111 +1199,43 @@ def render_fraud():
 
     st.divider()
 
-    # ── Tabs ──────────────────────────────────────────────────
-    tab1, tab2, tab3 = st.tabs([
-        "🔍 Fraud Analyzer",
-        "📊 Analytics",
-        "ℹ️ About",
-    ])
+    tab1, tab2, tab3 = st.tabs(["🔍 Fraud Analyzer","📊 Analytics","ℹ️ About"])
 
-    # ── TAB 1: Analyzer ───────────────────────────────────────
     with tab1:
         st.markdown("### 📋 Insurance Claim Details")
-        st.caption(
-            "Enter claim information and click "
-            "Analyze for an instant fraud assessment.")
+        st.caption("Enter claim information and click Analyze for an instant fraud assessment.")
 
         c1,c2,c3 = st.columns(3)
 
         with c1:
-            st.markdown(
-                "<div class='section-header-red'>"
-                "🚗 Vehicle & Accident</div>",
-                unsafe_allow_html=True)
-            make = st.selectbox(
-                "Vehicle Make",
-                [0,1,2,3,4,5,6,7],index=6,
-                format_func=lambda x:
-                ['Pontiac','Honda','Toyota','Mazda',
-                 'Dodge','Chevrolet','Ford','BMW'][x])
-            vcat = st.selectbox(
-                "Vehicle Category",[0,1,2],
-                format_func=lambda x:
-                ['Sport','Sedan','Utility'][x])
-            vprice = st.selectbox(
-                "Vehicle Price Range",
-                [0,1,2,3,4,5],index=5,
-                format_func=lambda x:
-                ['Under $20K','$20K-$29K','$30K-$39K',
-                 '$40K-$59K','$60K-$69K','$70K+'][x])
-            area = st.selectbox(
-                "Accident Area",[0,1],
-                format_func=lambda x:
-                ['Rural','Urban'][x])
-            age_veh = st.slider(
-                "Age of Vehicle",0,7,3)
+            st.markdown("<div class='section-header-red'>🚗 Vehicle & Accident</div>",unsafe_allow_html=True)
+            make   = st.selectbox("Vehicle Make",[0,1,2,3,4,5,6,7],index=6,format_func=lambda x:['Pontiac','Honda','Toyota','Mazda','Dodge','Chevrolet','Ford','BMW'][x])
+            vcat   = st.selectbox("Vehicle Category",[0,1,2],format_func=lambda x:['Sport','Sedan','Utility'][x])
+            vprice = st.selectbox("Vehicle Price Range",[0,1,2,3,4,5],index=5,format_func=lambda x:['Under $20K','$20K-$29K','$30K-$39K','$40K-$59K','$60K-$69K','$70K+'][x])
+            area   = st.selectbox("Accident Area",[0,1],format_func=lambda x:['Rural','Urban'][x])
+            age_veh= st.slider("Age of Vehicle",0,7,3)
 
         with c2:
-            st.markdown(
-                "<div class='section-header-red'>"
-                "📋 Policy & Claim</div>",
-                unsafe_allow_html=True)
-            ptype = st.selectbox(
-                "Policy Type",[0,1,2,3,4,5],
-                format_func=lambda x:
-                ['Sport-Collision','Sport-All Perils',
-                 'Sport-Liability','Sedan-Collision',
-                 'Sedan-All Perils','Sedan-Liability'][x])
-            bpol = st.selectbox(
-                "Base Policy",[0,1,2],
-                format_func=lambda x:
-                ['Collision','All Perils','Liability'][x])
-            ded = st.selectbox(
-                "Deductible ($)",[300,400,500,700])
-            drat = st.slider("Driver Rating",1,4,2,
-                help="1=Excellent  |  4=Poor")
-            pclaims = st.selectbox(
-                "Past Claims",[0,1,2,3],
-                format_func=lambda x:
-                ['None','1','2','More than 2'][x])
+            st.markdown("<div class='section-header-red'>📋 Policy & Claim</div>",unsafe_allow_html=True)
+            ptype  = st.selectbox("Policy Type",[0,1,2,3,4,5],format_func=lambda x:['Sport-Collision','Sport-All Perils','Sport-Liability','Sedan-Collision','Sedan-All Perils','Sedan-Liability'][x])
+            bpol   = st.selectbox("Base Policy",[0,1,2],format_func=lambda x:['Collision','All Perils','Liability'][x])
+            ded    = st.selectbox("Deductible ($)",[300,400,500,700])
+            drat   = st.slider("Driver Rating",1,4,2)
+            pclaims= st.selectbox("Past Claims",[0,1,2,3],format_func=lambda x:['None','1','2','More than 2'][x])
 
         with c3:
-            st.markdown(
-                "<div class='section-header-red'>"
-                "🚨 Risk Indicators</div>",
-                unsafe_allow_html=True)
-            police = st.selectbox(
-                "Police Report Filed?",[0,1],
-                format_func=lambda x:
-                ['No ⚠️','Yes ✅'][x])
-            witness = st.selectbox(
-                "Witness Present?",[0,1],
-                format_func=lambda x:
-                ['No ⚠️','Yes ✅'][x])
-            fault = st.selectbox(
-                "Fault",[0,1],
-                format_func=lambda x:
-                ['Policy Holder','Third Party'][x])
-            addr = st.selectbox(
-                "Address Changed?",[0,1,2,3,4],
-                format_func=lambda x:
-                ['No Change','<6 Months',
-                 '1 Year','2-3 Years','4-8 Years'][x])
-            nsuppl = st.selectbox(
-                "Supplements",[0,1,2,3,4],
-                format_func=lambda x:
-                ['None','1','2','3','4+'][x])
-            age_h = st.slider(
-                "Age of Policy Holder",0,8,3)
+            st.markdown("<div class='section-header-red'>🚨 Risk Indicators</div>",unsafe_allow_html=True)
+            police  = st.selectbox("Police Report Filed?",[0,1],format_func=lambda x:['No ⚠️','Yes ✅'][x])
+            witness = st.selectbox("Witness Present?",[0,1],format_func=lambda x:['No ⚠️','Yes ✅'][x])
+            fault   = st.selectbox("Fault",[0,1],format_func=lambda x:['Policy Holder','Third Party'][x])
+            addr    = st.selectbox("Address Changed?",[0,1,2,3,4],format_func=lambda x:['No Change','<6 Months','1 Year','2-3 Years','4-8 Years'][x])
+            nsuppl  = st.selectbox("Supplements",[0,1,2,3,4],format_func=lambda x:['None','1','2','3','4+'][x])
+            age_h   = st.slider("Age of Policy Holder",0,8,3)
 
         st.divider()
         _,mid,_ = st.columns([1,2,1])
         with mid:
-            go_btn = st.button(
-                "🔍 Analyze Claim for Fraud",
-                type="primary",
-                use_container_width=True,
-                key="fraud_analyze")
+            go_btn = st.button("🔍 Analyze Claim for Fraud",type="primary",use_container_width=True,key="fraud_analyze")
 
         if go_btn:
             nwnp  = 1 if police==0 and witness==0 else 0
@@ -1437,21 +1248,15 @@ def render_fraud():
                 'PolicyType':ptype,'VehicleCategory':vcat,
                 'VehiclePrice':vprice,'Deductible':ded,
                 'DriverRating':drat,
-                'Days_Policy_Accident':3,
-                'Days_Policy_Claim':2,
-                'PastNumberOfClaims':pclaims,
-                'AgeOfVehicle':age_veh,
-                'AgeOfPolicyHolder':age_h,
-                'PoliceReportFiled':police,
+                'Days_Policy_Accident':3,'Days_Policy_Claim':2,
+                'PastNumberOfClaims':pclaims,'AgeOfVehicle':age_veh,
+                'AgeOfPolicyHolder':age_h,'PoliceReportFiled':police,
                 'WitnessPresent':witness,'AgentType':0,
-                'NumberOfSuppliments':nsuppl,
-                'AddressChange_Claim':addr,
-                'NumberOfCars':1,'Year':1994,
-                'BasePolicy':bpol,'AGE_RISK':0,
-                'MULTI_CAR':0,
+                'NumberOfSuppliments':nsuppl,'AddressChange_Claim':addr,
+                'NumberOfCars':1,'Year':1994,'BasePolicy':bpol,
+                'AGE_RISK':0,'MULTI_CAR':0,
                 'HIGH_DEDUCTIBLE':1 if ded>500 else 0,
-                'QUICK_CLAIM':0,
-                'NO_WITNESS_NO_POLICE':nwnp,
+                'QUICK_CLAIM':0,'NO_WITNESS_NO_POLICE':nwnp,
             }
             res = predict_fraud(claim,model,feats,iso)
 
@@ -1459,55 +1264,28 @@ def render_fraud():
             st.markdown("## 🔍 Fraud Analysis Results")
 
             if res['verdict'] == 'LEGITIMATE':
-                st.markdown(
-                    "<div class='legit-banner'>"
-                    "✅ &nbsp; CLAIM APPEARS LEGITIMATE"
-                    "</div>",unsafe_allow_html=True)
+                st.markdown("<div class='legit-banner'>✅ &nbsp; CLAIM APPEARS LEGITIMATE</div>",unsafe_allow_html=True)
             elif res['verdict'] == 'SUSPICIOUS':
-                st.markdown(
-                    "<div class='suspicious-banner'>"
-                    "⚠️ &nbsp; SUSPICIOUS — "
-                    "MANUAL REVIEW NEEDED"
-                    "</div>",unsafe_allow_html=True)
+                st.markdown("<div class='suspicious-banner'>⚠️ &nbsp; SUSPICIOUS — MANUAL REVIEW NEEDED</div>",unsafe_allow_html=True)
             else:
-                st.markdown(
-                    "<div class='fraud-banner'>"
-                    "❌ &nbsp; HIGH PROBABILITY "
-                    "FRAUD DETECTED"
-                    "</div>",unsafe_allow_html=True)
+                st.markdown("<div class='fraud-banner'>❌ &nbsp; HIGH PROBABILITY FRAUD DETECTED</div>",unsafe_allow_html=True)
 
             m1,m2,m3,m4 = st.columns(4)
-            m1.metric("Verdict",      res['verdict'])
-            m2.metric("Risk Level",   res['risk'])
-            m3.metric("Fraud Prob",   f"{res['fp']}%")
+            m1.metric("Verdict",res['verdict'])
+            m2.metric("Risk Level",res['risk'])
+            m3.metric("Fraud Prob",f"{res['fp']}%")
             m4.metric("Anomaly Score",f"{res['ano']}%")
 
             st.divider()
             g1,g2,g3 = st.columns(3)
-            with g1:
-                st.plotly_chart(
-                    gauge(res['fp'],'#ef4444',
-                          'Fraud Probability'),
-                    use_container_width=True)
-            with g2:
-                st.plotly_chart(
-                    gauge(res['lp'],'#10b981',
-                          'Legitimacy Score'),
-                    use_container_width=True)
-            with g3:
-                st.plotly_chart(
-                    gauge(res['ano'],'#f59e0b',
-                          'Anomaly Score'),
-                    use_container_width=True)
+            with g1: st.plotly_chart(gauge(res['fp'],'#ef4444','Fraud Probability'),use_container_width=True)
+            with g2: st.plotly_chart(gauge(res['lp'],'#10b981','Legitimacy Score'),use_container_width=True)
+            with g3: st.plotly_chart(gauge(res['ano'],'#f59e0b','Anomaly Score'),use_container_width=True)
 
             st.divider()
-            with st.spinner(
-                    "🔍 Generating AI explanation..."):
+            with st.spinner("🔍 Generating AI explanation..."):
                 sd = get_shap(model,res['df'],feats)
-                st.plotly_chart(
-                    shap_chart(sd,
-                        '🔍 Why was this claim flagged?'),
-                    use_container_width=True)
+                st.plotly_chart(shap_chart(sd,'🔍 Why was this claim flagged?'),use_container_width=True)
 
             st.markdown("### 🤖 AI Fraud Explanation")
             ff = sd[sd['SHAP']>0].head(3)
@@ -1516,110 +1294,50 @@ def render_fraud():
             with e1c:
                 st.error("🚨 **Fraud Indicators**")
                 for _,row in ff.iterrows():
-                    st.markdown(
-                        f"• **{row['Feature']}** = "
-                        f"`{row['Value']:.2f}` — "
-                        f"pushing fraud risk **up** by "
-                        f"{row['SHAP']:.3f} points")
+                    st.markdown(f"• **{row['Feature']}** = `{row['Value']:.2f}` — pushing fraud risk **up** by {row['SHAP']:.3f} points")
             with e2c:
                 st.success("✅ **Legitimacy Indicators**")
                 for _,row in lf.iterrows():
-                    st.markdown(
-                        f"• **{row['Feature']}** = "
-                        f"`{row['Value']:.2f}` — "
-                        f"pushing fraud risk **down** by "
-                        f"{abs(row['SHAP']):.3f} points")
+                    st.markdown(f"• **{row['Feature']}** = `{row['Value']:.2f}` — pushing fraud risk **down** by {abs(row['SHAP']):.3f} points")
 
-    # ── TAB 2: Analytics ──────────────────────────────────────
     with tab2:
         st.markdown("### 📊 Fraud Analytics")
         try:
             df = load_fraud_data()
             k1,k2,k3,k4 = st.columns(4)
             k1.metric("Total Claims",f"{len(df):,}")
-            k2.metric("Fraud Cases",
-                f"{df['FraudFound_P'].sum():,}",
-                f"{df['FraudFound_P'].mean()*100:.1f}%")
-            k3.metric("Legitimate",
-                f"{(df['FraudFound_P']==0).sum():,}")
+            k2.metric("Fraud Cases",f"{df['FraudFound_P'].sum():,}",f"{df['FraudFound_P'].mean()*100:.1f}%")
+            k3.metric("Legitimate",f"{(df['FraudFound_P']==0).sum():,}")
             k4.metric("AUC Score","0.8115")
 
             st.divider()
             a1,a2 = st.columns(2)
             with a1:
-                fg = df.groupby('Fault')[
-                    'FraudFound_P'].mean().reset_index()
-                fg['Fault_Label'] = fg['Fault'].map(
-                    {0:'Policy Holder',
-                     1:'Third Party'})
-                f1 = px.bar(
-                    fg,x='Fault_Label',
-                    y='FraudFound_P',
-                    title='Fraud Rate by Fault Type',
-                    color='FraudFound_P',
-                    color_continuous_scale=[
-                        [0,'#052e16'],
-                        [0.5,'#f59e0b'],
-                        [1,'#ef4444']],
-                    labels={
-                        'FraudFound_P':'Fraud Rate'})
-                f1.update_layout(
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    font_color='#cbd5e1')
-                st.plotly_chart(
-                    f1,use_container_width=True)
+                fg = df.groupby('Fault')['FraudFound_P'].mean().reset_index()
+                fg['Fault_Label'] = fg['Fault'].map({0:'Policy Holder',1:'Third Party'})
+                f1 = px.bar(fg,x='Fault_Label',y='FraudFound_P',title='Fraud Rate by Fault Type',color='FraudFound_P',color_continuous_scale=[[0,'#052e16'],[0.5,'#f59e0b'],[1,'#ef4444']],labels={'FraudFound_P':'Fraud Rate'})
+                f1.update_layout(paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#cbd5e1')
+                st.plotly_chart(f1,use_container_width=True)
             with a2:
-                pg = df.groupby('PoliceReportFiled')[
-                    'FraudFound_P'].mean().reset_index()
-                pg['Police'] = pg[
-                    'PoliceReportFiled'].map(
-                    {0:'No Report ⚠️',
-                     1:'Filed ✅'})
-                f2 = px.bar(
-                    pg,x='Police',y='FraudFound_P',
-                    title='Fraud Rate: Police Report?',
-                    color='FraudFound_P',
-                    color_continuous_scale=[
-                        [0,'#052e16'],
-                        [0.5,'#f59e0b'],
-                        [1,'#ef4444']],
-                    labels={
-                        'FraudFound_P':'Fraud Rate'})
-                f2.update_layout(
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    font_color='#cbd5e1')
-                st.plotly_chart(
-                    f2,use_container_width=True)
+                pg = df.groupby('PoliceReportFiled')['FraudFound_P'].mean().reset_index()
+                pg['Police'] = pg['PoliceReportFiled'].map({0:'No Report ⚠️',1:'Filed ✅'})
+                f2 = px.bar(pg,x='Police',y='FraudFound_P',title='Fraud Rate: Police Report?',color='FraudFound_P',color_continuous_scale=[[0,'#052e16'],[0.5,'#f59e0b'],[1,'#ef4444']],labels={'FraudFound_P':'Fraud Rate'})
+                f2.update_layout(paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#cbd5e1')
+                st.plotly_chart(f2,use_container_width=True)
 
-            f3 = px.histogram(df,x='VehiclePrice',
-                color='FraudFound_P',
-                title='Fraud by Vehicle Price Range',
-                color_discrete_map={
-                    0:'#10b981',1:'#ef4444'},
-                barmode='group',
-                labels={
-                    'FraudFound_P':'Fraud/Legit'})
-            f3.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font_color='#cbd5e1')
+            f3 = px.histogram(df,x='VehiclePrice',color='FraudFound_P',title='Fraud by Vehicle Price Range',color_discrete_map={0:'#10b981',1:'#ef4444'},barmode='group',labels={'FraudFound_P':'Fraud/Legit'})
+            f3.update_layout(paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#cbd5e1')
             st.plotly_chart(f3,use_container_width=True)
         except Exception as e:
             st.warning(f"Analytics error: {e}")
 
-    # ── TAB 3: About ──────────────────────────────────────────
     with tab3:
         st.markdown("### ℹ️ About Fraud Module")
         ab1,ab2 = st.columns([3,2])
         with ab1:
             st.markdown("""
             #### What is the Fraud Detection Module?
-            Uses two AI models together to detect
-            fraudulent insurance claims in real time —
-            the same approach used by Allstate,
-            Progressive, and Lloyd's of London.
+            Uses two AI models together to detect fraudulent insurance claims in real time.
 
             #### How It Works
             - ✅ **XGBoost** — learns from 15,420 claims
@@ -1628,30 +1346,12 @@ def render_fraud():
             - ✅ **SHAP** — plain English explanations
 
             #### Dataset
-            **Oracle Machine Learning** case study —
-            15,420 vehicle insurance claims with
-            33 features.
+            **Oracle Machine Learning** case study — 15,420 vehicle insurance claims with 33 features.
             """)
         with ab2:
-            pm = pd.DataFrame({
-                'Model':['XGBoost ⭐',
-                         'Random Forest',
-                         'Logistic Regression'],
-                'AUC'  :[0.8115,0.7965,0.7915]})
-            fp = px.bar(pm,x='AUC',y='Model',
-                orientation='h',
-                title='Model Comparison',
-                color='AUC',
-                color_continuous_scale=[
-                    [0,'#2d0000'],
-                    [0.5,'#f59e0b'],
-                    [1,'#ef4444']],
-                range_x=[0.6,0.85])
-            fp.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font_color='#cbd5e1',height=240,
-                margin=dict(l=10,r=20,t=40,b=10))
+            pm = pd.DataFrame({'Model':['XGBoost ⭐','Random Forest','Logistic Regression'],'AUC':[0.8115,0.7965,0.7915]})
+            fp = px.bar(pm,x='AUC',y='Model',orientation='h',title='Model Comparison',color='AUC',color_continuous_scale=[[0,'#2d0000'],[0.5,'#f59e0b'],[1,'#ef4444']],range_x=[0.6,0.85])
+            fp.update_layout(paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#cbd5e1',height=240,margin=dict(l=10,r=20,t=40,b=10))
             st.plotly_chart(fp,use_container_width=True)
 
 # ════════════════════════════════════════════════════════════
@@ -1665,6 +1365,10 @@ def main():
         render_loan()
     elif st.session_state.page == 'fraud':
         render_fraud()
+    elif st.session_state.page == 'analytics':
+        render_analytics_dashboard()
+    elif st.session_state.page == 'chatbot':
+        render_rag_chatbot()
 
 # ── Entry Point ───────────────────────────────────────────────
 if __name__ == '__main__':
