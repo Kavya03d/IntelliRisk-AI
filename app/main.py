@@ -196,8 +196,9 @@ def predict_fraud(claim, model, feats, iso):
             'ano':ano_pct,'df':df}
 
 def get_shap(model, df, feats):
-    """Get SHAP values — gracefully falls back if SHAP is incompatible."""
+    """Get SHAP values — applies NumPy patch for Python 3.14 compatibility."""
     try:
+        import shap_patch  # apply numpy monkey-patch first
         import shap
         ex   = shap.TreeExplainer(model)
         vals = ex.shap_values(df)
@@ -207,7 +208,6 @@ def get_shap(model, df, feats):
             'SHAP'   : vals[0]
         }).sort_values('SHAP', key=abs, ascending=False).head(12), True
     except Exception:
-        # SHAP incompatible with this Python version — return empty result
         return pd.DataFrame({
             'Feature': list(feats[:12]),
             'Value'  : list(df.values[0][:12]),
