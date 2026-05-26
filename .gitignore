@@ -1,0 +1,21 @@
+# Data files
+Data/raw/
+Data/processed/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Mac
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Zip files
+*.zip
+
+# Streamlit secrets
+.streamlit/secrets.toml
