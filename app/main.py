@@ -13,7 +13,6 @@ import matplotlib
 matplotlib.use('Agg')
 import plotly.graph_objects as go
 import plotly.express as px
-import shap
 warnings.filterwarnings('ignore')
 
 # ── Path Setup ───────────────────────────────────────────────
@@ -502,6 +501,7 @@ def predict_fraud(claim, model, feats, iso):
             'ano':ano_pct,'df':df}
 
 def get_shap(model, df, feats):
+    import shap
     ex   = shap.TreeExplainer(model)
     vals = ex.shap_values(df)
     return pd.DataFrame({
